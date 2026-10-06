@@ -244,6 +244,28 @@ body.simple #plain{display:block}
 @media (min-width:1500px){
   html{font-size:17px}
 }
+
+/* ===== review polish: in-world panels, hero reveal, services stagger ===== */
+.ov.hero h1 .w{display:inline-block;opacity:0;transform:translateY(.45em);filter:blur(6px)}
+body.film .ov.hero h1 .w{animation:wrise .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(.15s + var(--i)*.11s)}
+@keyframes wrise{to{opacity:1;transform:none;filter:none}}
+body.simple .ov.hero h1 .w,#plain h1 .w{opacity:1;transform:none;filter:none;animation:none}
+#ovLobby .svcl li{opacity:0;transform:translateX(-12px);transition:opacity .5s,transform .5s}
+#ovLobby.in .svcl li{opacity:1;transform:none;transition-delay:calc(.15s + var(--i)*70ms)}
+@media (min-width:861px){
+  .ov.left{background:rgba(10,11,16,.9);color:#F5EEDC;border:1px solid rgba(224,178,78,.45);box-shadow:0 30px 60px -30px rgba(0,0,0,.7);backdrop-filter:blur(10px)}
+  .ov.left .thumb{display:none}
+  .ov.left h3{color:#F5EEDC}
+  .ov.left .desc,.ov.left .lead{color:#cfc8b6}
+  .ov.left .eyebrow,.ov.left .num{color:#E0B24E}
+  .ov.left .eyebrow::before{background:#E0B24E}
+  .ov.left .counter,.ov.left .counter b{color:#F5EEDC}.ov.left .counter i{background:rgba(245,238,220,.3)}
+  .ov.left .chips span{color:#E0B24E;border-color:rgba(224,178,78,.45);background:transparent}
+  .ov.left .eyebrow .sample{background:#F5EEDC;color:#15130F}
+  .ov.left .btn-dark{background:#E0B24E;color:#15130F}.ov.left .btn-dark:hover{background:#F2D07A}
+  .ov.left .svcl li{border-color:rgba(245,238,220,.14);color:#F5EEDC}
+  .ov.left .svcl small{color:#E0B24E}
+}
 @media (prefers-reduced-motion:reduce){.hint i::after{animation:none}#loader path{animation-duration:.01s}}
 </style>
 </head>
@@ -379,7 +401,8 @@ const CONFIG = {
   whatsapp: "447400714867",
   whatsappDisplay: "+44 7400 714867",
   links: { Upwork: "", LinkedIn: "", GitHub: "" },
-  analytics: null
+  analytics: null,
+  formEndpoint: ""   // paste a Formspree/Basin/Getform URL here to receive leads straight to your inbox (falls back to email if empty)
 };
 
 /* =====================  PROJECTS = ROOMS  =====================
@@ -475,7 +498,7 @@ $("#caps").innerHTML = PROJECTS.map((p,i)=>`
     <h3>${p.title}</h3>
     <p class="desc">${p.description}</p>
     <div class="chips">${p.tech.slice(0,4).map(t=>`<span>${t}</span>`).join("")}</div>
-    <div class="ctas"><button class="btn btn-dark btn-sm" data-project="${p.id}">View project
+    <div class="ctas"><button class="btn btn-dark btn-sm" data-project="${p.id}">Explore project
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8h12M9 3l5 5-5 5"/></svg></button></div>
   </section>`).join("");
 
@@ -524,8 +547,9 @@ $("#inquiry").addEventListener("submit",e=>{
   if(v("website")) return;
   const body=`Name: ${v("name")}\nEmail: ${v("email")}\nCompany: ${v("company")||"-"}\nPhone: ${v("phone")||"-"}\nProject type: ${v("type")}\nBudget: ${v("budget")}\nTimeline: ${v("timeline")}\nURL: ${v("url")||"-"}\n\n${v("desc")}`;
   track("contact_form_submitted",{type:v("type")});
-  window.location.href=`mailto:${CONFIG.email}?subject=${encodeURIComponent("Project inquiry from "+v("name"))}&body=${encodeURIComponent(body)}`;
-  $("#sentMail").textContent=CONFIG.email; $("#sentMail").href="mailto:"+CONFIG.email; $("#sent").classList.add("show");
+  const showSent=()=>{ $("#sentMail").textContent=CONFIG.email; $("#sentMail").href="mailto:"+CONFIG.email; $("#sent").classList.add("show"); };
+  const viaMail=()=>{ window.location.href=`mailto:${CONFIG.email}?subject=${encodeURIComponent("Project inquiry from "+v("name"))}&body=${encodeURIComponent(body)}`; showSent(); };
+  if(CONFIG.formEndpoint){ fetch(CONFIG.formEndpoint,{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({name:v("name"),email:v("email"),company:v("company"),phone:v("phone"),type:v("type"),budget:v("budget"),timeline:v("timeline"),url:v("url"),message:v("desc")})}).then(r=>{ if(!r.ok) throw 0; showSent(); }).catch(viaMail); } else viaMail();
   $("#waBtn3").href=waUrl(`Hi EMMREX, I'm ${v("name")}. ${v("desc")}`); pulse=1;
 });
 
@@ -568,9 +592,11 @@ $("#mNext").onclick=nextStop;
   if(matchMedia("(pointer:coarse)").matches){ const h=$("#hint"); if(h){ h.innerHTML=h.innerHTML.replace(/SCROLL[^<]*|Scroll[^<]*/i,"Swipe up or tap ↓"); } }
 }
 
+$$("#ovLobby .svcl li").forEach((li,i)=>li.style.setProperty("--i",i));
+$$(".ov.hero h1").forEach(h=>{ h.innerHTML=h.textContent.trim().split(/\s+/).map((w,i)=>`<span class="w" style="--i:${i}">${w}</span>`).join(" "); });
 /* overlays */
 const ovHero=$("#ovHero"), ovLobby=$("#ovLobby"), ovCta=$("#ovCta"), caps=PROJECTS.map((_,i)=>$("#cap"+i));
-function setOv(el,a,b,fi=.35,fo=.35){ const o=clamp01((tau-a)/fi)*clamp01((b-tau)/fo); el.style.opacity=o.toFixed(3); el.style.visibility=o>.01?"visible":"hidden"; el.style.transform=`translateY(${((1-o)*14).toFixed(1)}px)`; el.style.pointerEvents=o>.6?"auto":"none"; }
+function setOv(el,a,b,fi=.35,fo=.35){ const o=clamp01((tau-a)/fi)*clamp01((b-tau)/fo); el.classList.toggle("in",o>.5); el.style.opacity=o.toFixed(3); el.style.visibility=o>.01?"visible":"hidden"; el.style.transform=`translateY(${((1-o)*14).toFixed(1)}px)`; el.style.pointerEvents=o>.6?"auto":"none"; }
 let tau=0;
 let prog=0, target=0, ani=null, playing=false, introAuto=false, introStart=0;
 function setPlayLabel(){ $("#playBtn").innerHTML=playing?'<span class="ic">❚❚</span><span class="tx"> Pause</span>':'<span class="ic">▶</span><span class="tx"> Play film</span>'; }
@@ -589,7 +615,7 @@ const loadImg=src=>new Promise(r=>{ const i=new Image(); i.onload=()=>r(i); i.on
 const imgs=Promise.all([loadImg(ASSETS.rex),loadImg(ASSETS.drone),loadImg(ASSETS.depth),Promise.all(Object.keys(IMGS).map(k=>loadImg(IMGS[k]).then(i=>[k,i]))),loadImg(ASSETS.logoWord),loadImg(ASSETS.logoMark)]);
 function ready(){ setTimeout(()=>{ $("#loader").classList.add("done"); track("entered_experience",{});
     setTimeout(()=>$("#titlecard").classList.add("go"),500);
-    setTimeout(()=>{ document.body.classList.add("film"); introStart=performance.now(); introAuto=!RM; if(RM) target=prog=1.6; },RM?200:3300); },RM?0:900); }
+    setTimeout(()=>{ document.body.classList.add("film"); introStart=performance.now(); introAuto=!RM; if(RM) target=prog=1.6; },RM?200:2700); },RM?0:350); }
 
 if(!renderer){ setSimple(true); $("#modeBtn").style.display="none"; imgs.then(ready); const n=document.createElement("div"); n.style.cssText="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99;background:#14161d;color:#f3ddbd;padding:10px 16px;border-radius:12px;font:500 13px Inter,sans-serif;max-width:92vw;text-align:center"; n.textContent="The 3D film needs WebGL / hardware acceleration. Turn it on in your browser settings, or try Chrome or Safari."; document.body.appendChild(n); }
 else imgs.then(([rexI,droneI,depthI,projImgs,logoWI,markI])=>{ try{
@@ -687,11 +713,12 @@ else imgs.then(([rexI,droneI,depthI,projImgs,logoWI,markI])=>{ try{
   const sunS=new THREE.Sprite(new THREE.SpriteMaterial({map:T_SUN,transparent:true,opacity:0,depthWrite:false,fog:false})); sunS.position.set(HL+24,24,-130); sunS.scale.set(130,130,1); scene.add(sunS);
 
   /* ---------- rooms ---------- */
+  const MOOD=[0x8FB8FF,0xE8C26A,0xB79CFF,0x6FE0C5,0xFFA25A,0xFF7A7A]; const moodC=new THREE.Color();
   const rooms=[]; const rugCols=[0xDCD5C6,0xD6CFBF,0xE1DBCD,0xD3CCBC,0xDDD6C8,0xD8D1C2,0xE0D9CB];
   function dress(i){ const cx=cxOf(i); add(house,BX(7.4,.04,4.6),mat(rugCols[i%7],1),cx+.8,.02,-4.8); add(house,BX(7.4,.045,.08),GD,cx+.8,.02,-2.5);
     plant(house,cx-5.5,-7.9,1); lamp(house,cx+5.7,-8.3);
-    const pool=new THREE.Mesh(new THREE.CircleGeometry(3,40),new THREE.MeshBasicMaterial({map:T_POOL,color:0xE8C26A,transparent:true,opacity:0,depthWrite:false})); pool.rotation.x=-Math.PI/2; pool.position.set(cx+3.4,.05,-4.8); house.add(pool);
-    const cone=new THREE.Mesh(new THREE.CylinderGeometry(.6,2.6,6,40,1,true),new THREE.MeshBasicMaterial({color:0xF0D48A,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide})); cone.position.set(cx+3.4,3.1,-4.8); house.add(cone);
+    const pool=new THREE.Mesh(new THREE.CircleGeometry(3,40),new THREE.MeshBasicMaterial({map:T_POOL,color:MOOD[i%MOOD.length],transparent:true,opacity:0,depthWrite:false})); pool.rotation.x=-Math.PI/2; pool.position.set(cx+3.4,.05,-4.8); house.add(pool);
+    const cone=new THREE.Mesh(new THREE.CylinderGeometry(.6,2.6,6,40,1,true),new THREE.MeshBasicMaterial({color:MOOD[i%MOOD.length],transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide})); cone.position.set(cx+3.4,3.1,-4.8); house.add(cone);
     return {pool,cone,cx}; }
   let curScreens=[]; const scr=(map)=>{ const m=new THREE.MeshBasicMaterial({map,transparent:false}); m.color.setScalar(.12); curScreens.push(m); return m; };
   const makeRoom=(i,build)=>{ const d=dress(i), g=new THREE.Group(); house.add(g); curScreens=[]; const upd=build(g,d.cx)||(()=>{}); rooms[i]={g,d,upd,screens:curScreens}; };
@@ -834,8 +861,9 @@ else imgs.then(([rexI,droneI,depthI,projImgs,logoWI,markI])=>{ try{
     // --- rooms ---
     let act=-1;
     rooms.forEach((r,i)=>{ const h=holds[i], k=sm((tau-h[0]+.4)/.5)*sm((h[1]+.1-tau)/.4); r.upd(time); const o=r.d;
-      o.pool.material.opacity=.38*k; o.cone.material.opacity=.07*k; r.k=k; if(k>.5) act=i;
+      o.pool.material.opacity=.5*k; o.cone.material.opacity=.1*k; r.k=k; if(k>.5) act=i;
       const pw=.12+.88*sm((tau-(h[0]-1.0))/.8); r.screens.forEach(m=>m.color.setScalar(pw*(1-.04*Math.sin(time*40)*(pw<.99?1:0)))); });
+    pl.color.lerp(moodC.setHex(act>=0?MOOD[act%MOOD.length]:0xffd58a),Math.min(1,dt*3)); pl.intensity+=((act>=0?.75:.35)-pl.intensity)*Math.min(1,dt*3);
     if(act!==curRoom){ curRoom=act; if(act>=0){ pulse=Math.max(pulse,.9); waveT=1; track("room_viewed",{room:act}); } else chapKey=chapKey==="exit"?chapKey:null; }
     if(act===0) showChapter("r0","THE LOBBY","What I do"); else if(act>0) showChapter("r"+act,"ROOM 0"+act,PROJECTS[act-1].category);
     if(tau>T_CTA-.4) { if(chapKey!=="exit"){ waveT=1; pulse=1; } showChapter("exit","THE WAY OUT","Into the morning"); }

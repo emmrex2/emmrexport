@@ -22,3 +22,6 @@ add a Vercel serverless function or a form service (Formspree, Resend) and post 
 ## Notes
 - `vendor/three.min.js` is Three.js r128, bundled so no CDN is needed for 3D.
 - The 6 project screenshots are fictional samples. Replace them before presenting as real client work.
+
+## Receive leads straight to your inbox
+Set `CONFIG.formEndpoint` in index.html to a Formspree / Basin / Getform URL. If it is empty, the form falls back to opening the visitor email app.
