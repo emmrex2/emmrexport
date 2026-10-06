@@ -799,7 +799,7 @@ else imgs.then(([rexI,droneI,depthI,projImgs,logoWI,markI])=>{ try{
   window.__go=v=>{ target=prog=v; ani=null; introAuto=false; playing=false; };
 
   /* ---------- camera + loop ---------- */
-  const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3(); let first=true, last=performance.now(), t0=last, phase=0, prevX=-4.6, vxS=0, curRoom=-1;
+  const camPos=new THREE.Vector3(), camTgt=new THREE.Vector3(); let first=true, last=performance.now(), t0=last, phase=0, prevX=-4.6, vxS=0, turnS=0, curRoom=-1;
   const tmpC=new THREE.Color(), dFollow=new THREE.Vector3(), dTarget=new THREE.Vector3(), wantPos=new THREE.Vector3(), wantTgt=new THREE.Vector3();
   const grainC=document.createElement("canvas"); grainC.width=grainC.height=180; { const g=grainC.getContext("2d"), id=g.createImageData(180,180); for(let i=0;i<id.data.length;i+=4){ const v=Math.random()*255; id.data[i]=id.data[i+1]=id.data[i+2]=v; id.data[i+3]=255; } g.putImageData(id,0,0); $("#grain").style.backgroundImage="url("+grainC.toDataURL()+")"; }
   function frame(now){
@@ -824,7 +824,8 @@ else imgs.then(([rexI,droneI,depthI,projImgs,logoWI,markI])=>{ try{
     cam.position.copy(camPos); if(!RM){ cam.position.x+=Math.sin(time*.31)*.05; cam.position.y+=Math.sin(time*.43)*.04; }
     cam.lookAt(camTgt); if(!RM) cam.rotation.z+=Math.sin(time*.27)*.0035;
     const face=Math.atan2(cam.position.x-x,cam.position.z-z);
-    charG.rotation.y=face+st.ry+walk*.2; charG.rotation.z=RM?0:Math.sin(phase*Math.PI)*.012*walk;
+    const dirT=Math.max(-1,Math.max(-1,Math.min(1,vxS/2.0))); turnS+=(dirT-turnS)*Math.min(1,dt*3.2); const tw=Math.abs(turnS)>.12?turnS:0;
+    charG.rotation.y=face+st.ry+tw*(mob?.95:.8); charG.rotation.z=(RM?0:Math.sin(phase*Math.PI)*.012*walk)-tw*.045;
     shadow.position.x=x+.25; shadow.position.z=z+.1; shadow.rotation.z=-face;
     pl.position.set(x+2,3.6,z+3.5);
     // --- doors + light spill ---
